@@ -3,7 +3,7 @@ from app.loaders.pdf_loader import load_pdf
 from app.loaders.docx_loader import load_docx
 from app.chunking.splitter import get_chunks
 from app.vectordb.chroma import add_documents_to_db, get_vector_store
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
@@ -41,8 +41,11 @@ def process_document(upload_dir: str):
     return processed_files
 
 def answer_question(question: str):
-    api_key = os.getenv("GEMINI_API_KEY")
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key or api_key == "your_groq_api_key_here":
+        raise ValueError("GROQ_API_KEY is not set in the environment. Please add it to your .env file.")
+        
+    llm = ChatGroq(model_name="llama3-8b-8192", groq_api_key=api_key)
     
     vector_store = get_vector_store()
     retriever = vector_store.as_retriever(search_kwargs={"k": 5})
