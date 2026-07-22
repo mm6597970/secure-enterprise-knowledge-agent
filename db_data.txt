@@ -1,0 +1,221 @@
+-- ============================================================
+-- NEXORA SYSTEMS PVT. LTD. - COMPANY DATABASE
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS nexora_systems;
+USE nexora_systems;
+
+-- ------------------------------------------------------------
+-- 1. COMPANY INFO
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS company_info;
+CREATE TABLE company_info (
+    id                INT PRIMARY KEY AUTO_INCREMENT,
+    legal_name        VARCHAR(150) NOT NULL,
+    founded_year      YEAR NOT NULL,
+    headquarters      VARCHAR(150),
+    secondary_office  VARCHAR(150),
+    industry          VARCHAR(200),
+    ceo_name          VARCHAR(100),
+    cofounder_name    VARCHAR(100),
+    employee_strength INT,
+    company_type      VARCHAR(100)
+);
+
+INSERT INTO company_info 
+(legal_name, founded_year, headquarters, secondary_office, industry, ceo_name, cofounder_name, employee_strength, company_type) 
+VALUES 
+('Nexora Systems Private Limited', 2016, 'Chennai, Tamil Nadu, India', 'Bangalore, Karnataka, India', 'AI/ML Software, Enterprise Automation, Cloud Solutions', 'Arvind Rajan', 'Priya Menon', 340, 'Private Limited, VC & Angel-backed');
+
+-- ------------------------------------------------------------
+-- 2. LEADERSHIP
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS leadership;
+CREATE TABLE leadership (
+    leader_id   INT PRIMARY KEY AUTO_INCREMENT,
+    name        VARCHAR(100) NOT NULL,
+    designation VARCHAR(100),
+    joined_year YEAR
+);
+
+INSERT INTO leadership (name, designation, joined_year) VALUES
+('Arvind Rajan', 'Founder & CEO', 2016),
+('Priya Menon', 'Co-Founder & CTO', 2016),
+('Karthik Subramaniam', 'VP of Engineering', 2019),
+('Divya Iyer', 'VP of Human Resources', 2020),
+('Rahul Nair', 'VP of Sales & Partnerships', 2021),
+('Sandhya Krishnan', 'Head of AI Research', 2022);
+
+-- ------------------------------------------------------------
+-- 3. COMPANY HISTORY / TIMELINE
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS company_history;
+CREATE TABLE company_history (
+    history_id  INT PRIMARY KEY AUTO_INCREMENT,
+    event_year  YEAR NOT NULL,
+    milestone   TEXT
+);
+
+INSERT INTO company_history (event_year, milestone) VALUES
+(2016, 'Founded in Chennai as a 3-person startup; first product automated manual processes for local retailers.'),
+(2017, 'Raised angel funding of Rs. 50 lakhs; grew to 8 employees.'),
+(2018, 'Launched flagship SaaS product NexoFlow for workflow automation; onboarded first enterprise client.'),
+(2019, 'Crossed 20 employees; opened the Bangalore engineering office.'),
+(2020, 'Pivoted toward AI/ML solutions; formed an in-house machine learning team.'),
+(2021, 'Closed Series A funding of Rs. 8 crore.'),
+(2022, 'Crossed Rs. 15 crore annual revenue; workforce grew to 120 employees.'),
+(2023, 'Launched the Smart Invoice AI platform for automated invoice processing.'),
+(2024, 'Formed strategic cloud partnership with Global Tech Partners (US); entered US market.'),
+(2025, 'Revenue reached Rs. 42 crore; employees crossed 340; began research collaboration with IIT Chennai.'),
+(2026, 'Launched internal Multi-Agent LLM & Hallucination Detection research division.');
+
+-- ------------------------------------------------------------
+-- 4. INCOME TIMELINE
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS income_timeline;
+CREATE TABLE income_timeline (
+    fy_id                 INT PRIMARY KEY AUTO_INCREMENT,
+    financial_year        VARCHAR(10) NOT NULL,
+    revenue_cr            DECIMAL(6,2),
+    employee_count        INT,
+    net_profit_margin_pct DECIMAL(5,2)
+);
+
+INSERT INTO income_timeline (financial_year, revenue_cr, employee_count, net_profit_margin_pct) VALUES
+('2017-18', 0.60, 8, NULL),
+('2018-19', 1.40, 18, 6.00),
+('2019-20', 3.20, 35, 9.00),
+('2020-21', 5.80, 58, 11.00),
+('2021-22', 9.50, 90, 13.00),
+('2022-23', 15.30, 120, 15.00),
+('2023-24', 24.70, 210, 17.00),
+('2024-25', 34.90, 290, 18.00),
+('2025-26', 42.10, 340, 19.00);
+
+-- ------------------------------------------------------------
+-- 5. ROLES & SALARY STRUCTURE
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS salary_structure;
+CREATE TABLE salary_structure (
+    role_id      INT PRIMARY KEY AUTO_INCREMENT,
+    role_name    VARCHAR(80) NOT NULL,
+    level_no     INT,
+    min_lpa      DECIMAL(6,2) COMMENT 'For Intern this stores min monthly stipend in Rs. thousands',
+    max_lpa      DECIMAL(6,2) COMMENT 'For Intern this stores max monthly stipend in Rs. thousands',
+    review_cycle VARCHAR(60)
+);
+
+INSERT INTO salary_structure (role_name, level_no, min_lpa, max_lpa, review_cycle) VALUES
+('Intern', 1, 15, 25, 'One-time, at conversion'),
+('Associate / Junior Employee', 2, 4.5, 7, 'Annual'),
+('Software Engineer', 2, 7, 12, 'Annual'),
+('Senior Software Engineer', 2, 12, 18, 'Annual'),
+('Team Lead (TL)', 3, 18, 26, 'Annual'),
+('Manager', 4, 26, 40, 'Annual'),
+('Senior Manager / Director', 5, 40, 65, 'Annual'),
+('CEO / Co-Founder', 6, 70, 70, 'Board review');
+
+-- ------------------------------------------------------------
+-- 6. EMPLOYEES
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees (
+    emp_id     INT PRIMARY KEY AUTO_INCREMENT,
+    full_name  VARCHAR(100) NOT NULL,
+    role_id    INT,
+    department VARCHAR(80),
+    salary_lpa DECIMAL(6,2),
+    join_date  DATE,
+    manager_id INT NULL,
+    FOREIGN KEY (role_id) REFERENCES salary_structure(role_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(emp_id)
+);
+
+INSERT INTO employees (full_name, role_id, department, salary_lpa, join_date, manager_id) VALUES
+('Arvind Rajan', 8, 'Executive', 70.00, '2016-03-01', NULL),
+('Priya Menon', 8, 'Executive', 70.00, '2016-03-01', NULL),
+('Karthik Subramaniam', 6, 'Engineering', 38.00, '2019-06-15', 1),
+('Divya Iyer', 6, 'Human Resources', 32.00, '2020-01-10', 1),
+('Meera Pillai', 5, 'Engineering', 30.00, '2021-04-01', 3),
+('Suresh Kumar', 4, 'Engineering', 22.00, '2022-02-14', 5),
+('Anjali Ramesh', 3, 'Engineering', 14.00, '2023-07-01', 6),
+('Vignesh Babu', 3, 'AI Research', 15.50, '2024-01-20', 6),
+('Deepa Narayan', 1, 'Engineering', 0.20, '2026-05-01', 6);
+
+-- ------------------------------------------------------------
+-- 7. LEAVE POLICY
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS leave_policy;
+CREATE TABLE leave_policy (
+    policy_id    INT PRIMARY KEY AUTO_INCREMENT,
+    leave_type   VARCHAR(60) NOT NULL,
+    days_allowed VARCHAR(30),
+    notes        TEXT
+);
+
+INSERT INTO leave_policy (leave_type, days_allowed, notes) VALUES
+('Casual Leave', '12 days/year', 'Max 3 consecutive days without Manager approval.'),
+('Sick Leave', '10 days/year', 'Medical certificate required beyond 2 consecutive days.'),
+('Earned/Privilege Leave', '15 days/year', 'Accrues 1.25 days/month; carry-forward up to 30 days.'),
+('Maternity Leave', '26 weeks', 'As per statutory guidelines.'),
+('Paternity Leave', '10 days', 'To be availed within 3 months of childbirth.'),
+('Bereavement Leave', '5 days', 'For death in immediate family.'),
+('Leave Without Pay', 'Case-by-case', 'Requires Manager and HR approval.');
+
+-- ------------------------------------------------------------
+-- 8. PAST PROJECTS
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS projects_past;
+CREATE TABLE projects_past (
+    project_id   INT PRIMARY KEY AUTO_INCREMENT,
+    project_name VARCHAR(120) NOT NULL,
+    client_name  VARCHAR(120),
+    start_date   DATE,
+    end_date     DATE,
+    description  TEXT
+);
+
+INSERT INTO projects_past (project_name, client_name, start_date, end_date, description) VALUES
+('NexoFlow Rollout', 'RetailChain India', '2018-04-01', '2019-03-31', 'Workflow automation suite deployed across 40+ retail outlets.'),
+('Smart Invoice AI', 'FinEdge Bank', '2023-01-15', '2023-11-30', 'OCR + LLM based automated invoice extraction and approval routing.'),
+('Multi-Agent Support Desk', 'TeleConnect Ltd.', '2024-02-01', '2024-12-15', 'Multi-agent LLM system handling tiered customer support tickets.'),
+('Hallucination Detection Framework', 'IIT Chennai (Research)', '2025-01-01', '2025-12-31', 'Conformal-risk-control based framework to flag unreliable LLM outputs.');
+
+-- ------------------------------------------------------------
+-- 9. CURRENT PROJECTS
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS projects_current;
+CREATE TABLE projects_current (
+    project_id         INT PRIMARY KEY AUTO_INCREMENT,
+    project_name       VARCHAR(120) NOT NULL,
+    client_name        VARCHAR(120),
+    category           VARCHAR(120),
+    contract_value_inr DECIMAL(12,2),
+    pricing_model      VARCHAR(60),
+    status             VARCHAR(30),
+    start_date         DATE,
+    end_date           DATE
+);
+
+INSERT INTO projects_current (project_name, client_name, category, contract_value_inr, pricing_model, status, start_date, end_date) VALUES
+('Project Atlas', 'Meridian Retail', 'AI Customer Support Platform', 18000000.00, 'Retainer + Usage', 'Ongoing', '2026-01-01', '2026-12-31'),
+('Project Falcon', 'FinEdge Bank (Phase 2)', 'Multi-Agent Document Processing', 24000000.00, 'Time & Material', 'Ongoing', '2026-03-01', '2027-02-28'),
+('Project Nimbus', 'Bright Logistics', 'Cloud Migration & DevOps Automation', 9500000.00, 'Fixed Bid', 'Ongoing', '2026-04-01', '2026-10-31'),
+('Project Aegis', 'Internal / Beta Clients', 'Hallucination Detection SaaS', 6000000.00, 'Internal R&D Budget', 'Beta', '2026-01-01', NULL);
+
+-- ------------------------------------------------------------
+-- 10. COLLABORATIONS / PARTNERS
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS collaborations;
+CREATE TABLE collaborations (
+    collab_id    INT PRIMARY KEY AUTO_INCREMENT,
+    partner_name VARCHAR(120) NOT NULL,
+    collab_type  VARCHAR(150),
+    since_year   YEAR
+);
+
+INSERT INTO collaborations (partner_name, collab_type, since_year) VALUES
+('Global Tech Partners (USA)', 'Cloud infrastructure & US market entry partnership', 2024),
+('IIT Chennai', 'AI/ML research collaboration', 2025),
+('CloudNova Solutions', 'Reseller & channel partnership', 2022),
+('DataSecure Corp', 'Cybersecurity & compliance integration partner', 2023);

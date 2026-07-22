@@ -1,0 +1,473 @@
+Step 2 — Basic RAG (AI Knowledge Search)
+🎯 Goal
+
+Build an AI service that can:
+
+Upload company documents (PDF, DOCX, TXT)
+Read and understand them
+Store them in a vector database
+Answer user questions using those documents
+
+At the end of Step 2, you should be able to ask:
+
+"What is the leave policy?"
+
+and receive the correct answer from the uploaded document.
+Overall Architecture
+                    User
+                      │
+                      ▼
+             Ask Question
+                      │
+                      ▼
+               FastAPI Server
+                      │
+        ┌─────────────┴─────────────┐
+        ▼                           ▼
+   ChromaDB Retriever          Gemini LLM
+        │                           ▲
+        └─────────────Context────────┘
+                      │
+                      ▼
+                 Final Answer
+
+                 What are we building?
+
+Think of RAG like this:
+
+Documents
+
+↓
+
+AI reads documents
+
+↓
+
+AI stores document meaning
+
+↓
+
+User asks question
+
+↓
+
+AI searches documents
+
+↓
+
+AI answers using documents
+
+Components
+1. FastAPI
+
+This becomes our AI server.
+
+Node.js
+
+handles
+
+REST APIs
+Login
+Database
+
+while
+
+FastAPI
+
+handles
+
+AI
+RAG
+Gemini
+ChromaDB
+2. Document Upload
+
+Supported files
+
+PDF
+
+DOCX
+
+TXT
+
+Example
+
+Leave Policy.pdf
+
+Employee Handbook.pdf
+
+HR Policy.pdf
+
+Company Rules.pdf
+
+User uploads
+
+↓
+
+Server receives
+
+↓
+
+Saved temporarily
+
+↓
+
+Ready for processing
+
+3. Document Loader
+
+Now AI reads the file.
+
+Example PDF
+
+Leave Policy
+
+Employees receive
+
+12 Casual Leave
+
+10 Sick Leave
+
+15 Earned Leave
+
+Loader extracts
+
+Raw Text
+4. Text Cleaning
+
+Remove
+
+Empty lines
+Extra spaces
+Bad formatting
+
+Example
+
+Before
+
+Leave Policy
+
+
+Employees
+
+
+12 Casual Leave
+
+After
+
+Leave Policy
+Employees
+12 Casual Leave
+5. Chunking
+
+LLMs cannot efficiently process an entire large document every time.
+
+Instead,
+
+split into smaller pieces.
+
+Example
+
+Employee Handbook
+
+100 pages
+
+↓
+
+Split
+
+Chunk 1
+
+Chunk 2
+
+Chunk 3
+
+...
+
+Chunk 250
+
+Each chunk
+
+600–1000 characters
+6. Embeddings
+
+This is the most important concept.
+
+A sentence
+
+Employees get 12 casual leaves.
+
+becomes
+
+[0.25,
+0.91,
+0.41,
+0.77,
+...]
+
+Not words.
+
+Numbers.
+
+These numbers represent the meaning of the sentence.
+
+7. ChromaDB
+
+Store
+
+Chunk
+
+Embedding
+
+Metadata
+
+Example
+
+Chunk
+
+↓
+
+Employees receive 12 casual leaves.
+
+↓
+
+Embedding
+
+↓
+
+Stored
+
+Now thousands of chunks are searchable.
+
+ChromaDB Structure
+Collection
+
+↓
+
+Chunk
+
+↓
+
+Embedding
+
+↓
+
+Metadata
+
+Example
+
+Chunk
+
+Employees receive 12 casual leave.
+
+Metadata
+
+File
+
+LeavePolicy.pdf
+
+Page
+
+3
+Question Flow
+
+User asks
+
+What is casual leave?
+
+↓
+
+Question converted to embedding
+
+↓
+
+Search ChromaDB
+
+↓
+
+Top matching chunks
+
+↓
+
+Gemini receives
+
+Question
+
++
+
+Relevant chunks
+
+↓
+
+Gemini answers.
+
+Complete Workflow
+Upload PDF
+
+↓
+
+Loader
+
+↓
+
+Text
+
+↓
+
+Cleaning
+
+↓
+
+Chunking
+
+↓
+
+Embeddings
+
+↓
+
+ChromaDB
+
+-------------------------
+
+User Question
+
+↓
+
+Embedding
+
+↓
+
+Similarity Search
+
+↓
+
+Top Chunks
+
+↓
+
+Gemini
+
+↓
+
+Answer
+APIs
+Upload
+POST /documents/upload
+
+Purpose
+
+Upload company documents.
+
+Process
+POST /documents/process
+
+Purpose
+
+Convert documents into embeddings.
+
+Ask
+POST /chat
+
+Example
+
+{
+    "question":"What is maternity leave?"
+}
+
+Response
+
+{
+    "answer":"Employees receive 26 weeks maternity leave..."
+}
+Folder Structure
+ai-service/
+
+app/
+
+├── api/
+│      chat.py
+│      upload.py
+│
+├── loaders/
+│      pdf_loader.py
+│      docx_loader.py
+│
+├── chunking/
+│      splitter.py
+│
+├── embeddings/
+│      embedding.py
+│
+├── vectordb/
+│      chroma.py
+│
+├── services/
+│      rag_service.py
+│
+├── main.py
+Technologies
+Component	Technology
+AI Server	FastAPI
+LLM	Google Gemini
+Framework	LangChain
+Vector Database	ChromaDB
+PDF Reader	PyMuPDF
+DOCX Reader	python-docx
+Chunking	RecursiveCharacterTextSplitter
+Embeddings	Google Embeddings
+
+
+
+
+
+Final Architecture After Step 2
+                    User
+                      │
+                      ▼
+                React Frontend
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+   Node.js + Express         FastAPI AI
+          │                       │
+          ▼                       ▼
+       MySQL                 ChromaDB
+                                  │
+                                  ▼
+                             Gemini LLM
+                                  │
+                                  ▼
+                             AI Answer
+What does the user experience?
+
+The application already feels like an AI assistant.
+
+Example:
+
+User:
+What is the leave policy?
+
+↓
+
+FastAPI
+
+↓
+
+Search ChromaDB
+
+↓
+
+Find Leave Policy chunk
+
+↓
+
+Gemini
+
+↓
+
+Answer:
+Employees receive 12 casual leave,
+10 sick leave,
+15 earned leave.
+
