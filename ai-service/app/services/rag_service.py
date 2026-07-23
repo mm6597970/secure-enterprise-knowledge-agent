@@ -45,7 +45,7 @@ def answer_question(question: str):
     if not api_key or api_key == "your_groq_api_key_here":
         raise ValueError("GROQ_API_KEY is not set in the environment. Please add it to your .env file.")
         
-    llm = ChatGroq(model_name="llama3-8b-8192", groq_api_key=api_key)
+    llm = ChatGroq(model_name="llama-3.1-8b-instant", groq_api_key=api_key)
     
     vector_store = get_vector_store()
     retriever = vector_store.as_retriever(search_kwargs={"k": 5})

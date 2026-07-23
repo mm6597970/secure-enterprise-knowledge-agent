@@ -8,6 +8,7 @@ const healthRoutes = require('./routes/health.routes');
 const companyRoutes = require('./routes/company.routes');
 const employeeRoutes = require('./routes/employee.routes');
 const projectRoutes = require('./routes/project.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 
@@ -21,5 +22,6 @@ app.use('/health', healthRoutes);
 app.use('/', companyRoutes); 
 app.use('/', employeeRoutes);
 app.use('/projects', projectRoutes);
+app.use('/', aiRoutes);
 
 module.exports = app;
