@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Users, Bot, Send, Upload } from 'lucide-react';
+import { Users, Bot, Send, Upload, Lock, LogOut } from 'lucide-react';
 import './index.css';
 
 const API_BASE_URL = 'http://localhost:5000';
@@ -20,6 +20,20 @@ const MYSQL_ENDPOINTS = [
 ];
 
 function App() {
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user')) || null;
+    } catch {
+      return null;
+    }
+  });
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'night');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+
   const [activeTab, setActiveTab] = useState(MYSQL_ENDPOINTS[0]);
   const [mysqlData, setMysqlData] = useState(null);
   const [loadingMysql, setLoadingMysql] = useState(false);
@@ -32,17 +46,56 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    setLoginError('');
+    try {
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
+      if (res.data.success) {
+        setToken(res.data.token);
+        setUser(res.data.user);
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+      }
+    } catch (err) {
+      setLoginError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setMessages([{ role: 'ai', content: 'Hello! Ask me a question about the company or upload a document to the knowledge base.' }]);
+  };
+
+  const getAuthHeaders = () => ({
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
   // Fetch MySQL Data whenever the active tab changes
   useEffect(() => {
+    if (!token) return;
     setLoadingMysql(true);
-    axios.get(`${API_BASE_URL}${activeTab.path}`)
+    axios.get(`${API_BASE_URL}${activeTab.path}`, getAuthHeaders())
       .then(res => setMysqlData(res.data))
       .catch(err => {
         console.error(`Error fetching ${activeTab.path}:`, err);
-        setMysqlData({ error: 'Failed to fetch data. Is the backend running?' });
+        if (err.response?.status === 401) handleLogout();
+        setMysqlData({ error: 'Failed to fetch data or unauthorized.' });
       })
       .finally(() => setLoadingMysql(false));
-  }, [activeTab]);
+  }, [activeTab, token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,11 +111,12 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat`, { question: userMessage });
+      const response = await axios.post(`${API_BASE_URL}/chat`, { question: userMessage }, getAuthHeaders());
       setMessages(prev => [...prev, { role: 'ai', content: response.data.answer || 'No answer received.' }]);
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages(prev => [...prev, { role: 'ai', content: 'Error communicating with AI service.' }]);
+      if (error.response?.status === 401) handleLogout();
+      setMessages(prev => [...prev, { role: 'ai', content: 'Error: ' + (error.response?.data?.message || 'Unauthorized or service unavailable.') }]);
     } finally {
       setLoading(false);
     }
@@ -80,11 +134,12 @@ function App() {
 
     try {
       await axios.post(`${API_BASE_URL}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
       });
       setMessages(prev => [...prev, { role: 'ai', content: `Success! ${file.name} has been processed and added to the RAG knowledge base.` }]);
     } catch (error) {
       console.error("Upload error:", error);
+      if (error.response?.status === 401) handleLogout();
       setMessages(prev => [...prev, { role: 'ai', content: `Failed to upload ${file.name}.` }]);
     } finally {
       setUploading(false);
@@ -92,11 +147,82 @@ function App() {
     }
   };
 
+  if (!token) {
+    return (
+      <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh' }}>
+        
+        <div style={{ alignSelf: 'flex-end', marginBottom: '2rem', display: 'flex', gap: '0.5rem' }}>
+          <button onClick={() => setTheme('day')} style={{ padding: '0.5rem', fontSize: '0.8rem', background: theme === 'day' ? 'var(--primary)' : 'rgba(128,128,128,0.2)' }}>Day</button>
+          <button onClick={() => setTheme('evening')} style={{ padding: '0.5rem', fontSize: '0.8rem', background: theme === 'evening' ? 'var(--primary)' : 'rgba(128,128,128,0.2)' }}>Evening</button>
+          <button onClick={() => setTheme('night')} style={{ padding: '0.5rem', fontSize: '0.8rem', background: theme === 'night' ? 'var(--primary)' : 'rgba(128,128,128,0.2)' }}>Night</button>
+        </div>
+
+        <div className="card" style={{ maxWidth: '400px', width: '100%', margin: 'auto' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <Lock size={24} color="#818cf8" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Secure Login
+          </h2>
+          {loginError && <div style={{ color: '#ef4444', background: '#fee2e2', padding: '10px', borderRadius: '4px', marginBottom: '1rem', textAlign: 'center' }}>{loginError}</div>}
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <input 
+              type="email" 
+              placeholder="Email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              required 
+              style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+            />
+            <input 
+              type="password" 
+              placeholder="Password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              required 
+              style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+            />
+            <button type="submit" disabled={loggingIn} style={{ padding: '0.75rem', background: '#818cf8', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+              {loggingIn ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+          <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <strong>Demo Accounts:</strong><br/>
+            arvind.rajan@nexorasystems.com (CEO)<br/>
+            divya.iyer@nexorasystems.com (HR)<br/>
+            anjali.ramesh@nexorasystems.com (Employee)<br/>
+            deepa.narayan@nexorasystems.com (Intern)<br/>
+            <em>Password: password</em>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
-      <header>
-        <h1>Secure Enterprise Dashboard</h1>
-        <p>Unified Interface for MySQL Data and AI Knowledge Retrieval</p>
+      <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '-1rem' }}>
+        <button onClick={() => setTheme('day')} style={{ padding: '0.5rem', fontSize: '0.8rem', background: theme === 'day' ? 'var(--primary)' : 'rgba(128,128,128,0.2)' }}>Day</button>
+        <button onClick={() => setTheme('evening')} style={{ padding: '0.5rem', fontSize: '0.8rem', background: theme === 'evening' ? 'var(--primary)' : 'rgba(128,128,128,0.2)' }}>Evening</button>
+        <button onClick={() => setTheme('night')} style={{ padding: '0.5rem', fontSize: '0.8rem', background: theme === 'night' ? 'var(--primary)' : 'rgba(128,128,128,0.2)' }}>Night</button>
+      </div>
+
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ textAlign: 'left' }}>
+          <h1>Secure Enterprise Dashboard</h1>
+          <p>Unified Interface for MySQL Data and AI Knowledge Retrieval</p>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+          {user && (
+            <div style={{ background: 'var(--card-bg)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'right' }}>
+              <div style={{ fontWeight: 'bold', color: 'var(--text)' }}>{user.name}</div>
+              <div style={{ fontSize: '0.85rem', color: '#818cf8' }}>{user.role}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</div>
+            </div>
+          )}
+          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
       </header>
 
       {/* Left Column: MySQL Data */}
@@ -164,7 +290,7 @@ function App() {
           <form onSubmit={handleSendMessage} className="input-group">
             <input 
               type="text" 
-              placeholder="e.g., What is the casual leave policy?"
+              placeholder="Ask a question (e.g., Show CEO salary)"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               disabled={loading}

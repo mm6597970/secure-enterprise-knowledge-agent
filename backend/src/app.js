@@ -9,6 +9,7 @@ const companyRoutes = require('./routes/company.routes');
 const employeeRoutes = require('./routes/employee.routes');
 const projectRoutes = require('./routes/project.routes');
 const aiRoutes = require('./routes/ai.routes');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+app.use('/auth', authRoutes);
 app.use('/health', healthRoutes);
 app.use('/', companyRoutes); 
 app.use('/', employeeRoutes);

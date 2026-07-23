@@ -40,7 +40,13 @@ def process_document(upload_dir: str):
         
     return processed_files
 
-def answer_question(question: str):
+def answer_question(question: str, user: dict = None):
+    # 1. Input Guardrails (Prompt Injection / Malicious Inputs)
+    lower_q = question.lower()
+    blocked_keywords = ["ignore", "override", "bypass", "jailbreak", "confidential"]
+    if any(word in lower_q for word in blocked_keywords):
+        return "Blocked: Input violates security guardrails."
+
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key or api_key == "your_groq_api_key_here":
         raise ValueError("GROQ_API_KEY is not set in the environment. Please add it to your .env file.")
@@ -48,7 +54,17 @@ def answer_question(question: str):
     llm = ChatGroq(model_name="llama-3.1-8b-instant", groq_api_key=api_key)
     
     vector_store = get_vector_store()
-    retriever = vector_store.as_retriever(search_kwargs={"k": 5})
+    
+    # 2. Secure RAG Retrieval (RBAC)
+    search_kwargs = {"k": 5}
+    if user and user.get("role"):
+        role = user.get("role")
+        # In a complete implementation, this filter would match the document's required_role.
+        # For simplicity, if they aren't CEO or HR or Manager, we enforce a filter
+        if role not in ["CEO", "Manager", "HR"]:
+            search_kwargs["filter"] = {"role": role}
+            
+    retriever = vector_store.as_retriever(search_kwargs=search_kwargs)
     
     system_prompt = (
         "You are an AI assistant for a company. Use the following pieces of retrieved context to answer the question. "
@@ -65,4 +81,14 @@ def answer_question(question: str):
     rag_chain = create_retrieval_chain(retriever, question_answer_chain)
     
     response = rag_chain.invoke({"input": question})
-    return response["answer"]
+    answer = response.get("answer", "")
+    
+    # 3. Output Guardrails
+    if not answer or answer.strip() == "":
+        return "Information not found."
+    
+    # Basic hallucination check (e.g. refusing if too generic)
+    if "i don't know" in answer.lower():
+        return "Information not found."
+        
+    return answer

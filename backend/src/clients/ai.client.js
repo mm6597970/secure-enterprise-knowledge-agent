@@ -4,9 +4,9 @@ const fs = require('fs');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
 
-const askQuestion = async (question) => {
+const askQuestion = async (question, user) => {
     try {
-        const response = await axios.post(`${AI_SERVICE_URL}/chat`, { question });
+        const response = await axios.post(`${AI_SERVICE_URL}/chat`, { question, user });
         return response.data;
     } catch (error) {
         throw new Error(error.response?.data?.detail || 'AI service unavailable.');

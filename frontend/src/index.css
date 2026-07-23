@@ -1,13 +1,35 @@
 :root {
   --primary: #4F46E5;
   --primary-hover: #4338CA;
-  --bg: #0F172A;
-  --card-bg: rgba(30, 41, 59, 0.7);
+  --bg: #1e1e24; /* Night (greyish) */
+  --card-bg: rgba(45, 45, 55, 0.7);
   --text: #F8FAFC;
   --text-muted: #94A3B8;
   --border: rgba(255, 255, 255, 0.1);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color-scheme: dark;
+}
+
+[data-theme='day'] {
+  --primary: #4F46E5;
+  --primary-hover: #4338CA;
+  --bg: #ffffff; /* Day (white) */
+  --card-bg: rgba(248, 250, 252, 0.9);
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: rgba(0, 0, 0, 0.1);
+  color-scheme: light;
+}
+
+[data-theme='evening'] {
+  --primary: #d97706;
+  --primary-hover: #b45309;
+  --bg: #fffbf0; /* Evening (dim warm white/sepia) */
+  --card-bg: rgba(254, 243, 199, 0.6);
+  --text: #451a03;
+  --text-muted: #78350f;
+  --border: rgba(0, 0, 0, 0.1);
+  color-scheme: light;
 }
 
 body {

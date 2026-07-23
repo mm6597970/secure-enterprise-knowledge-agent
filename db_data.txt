@@ -1,3 +1,5 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- ============================================================
 -- NEXORA SYSTEMS PVT. LTD. - COMPANY DATABASE
 -- ============================================================
@@ -219,3 +221,136 @@ INSERT INTO collaborations (partner_name, collab_type, since_year) VALUES
 ('IIT Chennai', 'AI/ML research collaboration', 2025),
 ('CloudNova Solutions', 'Reseller & channel partnership', 2022),
 ('DataSecure Corp', 'Cybersecurity & compliance integration partner', 2023);
+
+-- ============================================================
+-- 11. SECURITY & RBAC (STEP 4)
+-- ============================================================
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS document_permissions;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE roles (
+    role_id INT PRIMARY KEY AUTO_INCREMENT,
+    role_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE permissions (
+    permission_id INT PRIMARY KEY AUTO_INCREMENT,
+    permission_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE role_permissions (
+    role_id INT,
+    permission_id INT,
+    PRIMARY KEY (role_id, permission_id),
+    FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES permissions(permission_id) ON DELETE CASCADE
+);
+
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_id INT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+);
+
+CREATE TABLE user_roles (
+    user_id INT,
+    role_id INT,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
+);
+
+CREATE TABLE document_permissions (
+    doc_id INT PRIMARY KEY AUTO_INCREMENT,
+    document_name VARCHAR(150) NOT NULL,
+    required_role VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE audit_logs (
+    log_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NULL,
+    role_name VARCHAR(50),
+    question TEXT,
+    status VARCHAR(50),
+    retrieved_documents TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- ------------------------------------------------------------
+-- INSERTING DATA FOR STEP 4
+-- ------------------------------------------------------------
+
+-- 1. Roles
+INSERT INTO roles (role_name) VALUES 
+('Intern'), ('Employee'), ('HR'), ('Manager'), ('CEO');
+
+-- 2. Permissions
+INSERT INTO permissions (permission_name) VALUES 
+('view_policies'), ('view_salaries'), ('view_projects');
+
+-- 3. Role Permissions based on Step 3 matrix
+-- Intern: view_policies, view_projects
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.role_id, p.permission_id FROM roles r, permissions p 
+WHERE r.role_name = 'Intern' AND p.permission_name IN ('view_policies', 'view_projects');
+
+-- Employee: view_policies, view_projects
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.role_id, p.permission_id FROM roles r, permissions p 
+WHERE r.role_name = 'Employee' AND p.permission_name IN ('view_policies', 'view_projects');
+
+-- HR: view_policies, view_salaries, view_projects
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.role_id, p.permission_id FROM roles r, permissions p 
+WHERE r.role_name = 'HR';
+
+-- Manager & CEO: view_policies, view_salaries, view_projects
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.role_id, p.permission_id FROM roles r, permissions p 
+WHERE r.role_name IN ('Manager', 'CEO');
+
+-- 4. Users (linked to employees table)
+-- Using existing employees: 
+-- Emp 1: Arvind Rajan (CEO), Emp 4: Divya Iyer (HR), Emp 7: Anjali Ramesh (Employee), Emp 9: Deepa Narayan (Intern)
+INSERT INTO users (emp_id, email, password_hash) VALUES 
+(1, 'arvind.rajan@nexorasystems.com', 'hashed_pwd_ceo'),
+(4, 'divya.iyer@nexorasystems.com', 'hashed_pwd_hr'),
+(7, 'anjali.ramesh@nexorasystems.com', 'hashed_pwd_emp'),
+(9, 'deepa.narayan@nexorasystems.com', 'hashed_pwd_intern');
+
+-- 5. User Roles
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email = 'arvind.rajan@nexorasystems.com' AND r.role_name = 'CEO';
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email = 'divya.iyer@nexorasystems.com' AND r.role_name = 'HR';
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email = 'anjali.ramesh@nexorasystems.com' AND r.role_name = 'Employee';
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email = 'deepa.narayan@nexorasystems.com' AND r.role_name = 'Intern';
+
+-- 6. Document Permissions (Sample chunk metadata mapped to roles)
+INSERT INTO document_permissions (document_name, required_role) VALUES
+('Company Profile', 'Intern'),
+('Employee Handbook', 'Intern'),
+('Leave Policy', 'Employee'),
+('Salary Structure', 'HR'),
+('CEO Compensation', 'CEO'),
+('Financial Reports', 'Manager'),
+('Current Projects', 'Employee');
+
+-- 7. Audit Logs (Sample entries to match Step 4 examples)
+INSERT INTO audit_logs (user_id, role_name, question, status, retrieved_documents)
+SELECT u.user_id, 'Intern', 'Show CEO salary.', 'Denied', 'No Authorized Chunks' 
+FROM users u WHERE u.email = 'deepa.narayan@nexorasystems.com';
+
+INSERT INTO audit_logs (user_id, role_name, question, status, retrieved_documents)
+SELECT u.user_id, 'Employee', 'What is the leave policy?', 'Allowed', 'Leave Policy Document' 
+FROM users u WHERE u.email = 'anjali.ramesh@nexorasystems.com';

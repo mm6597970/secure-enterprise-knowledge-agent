@@ -8,8 +8,8 @@ const chat = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Question is required' });
         }
         
-        // Forward question to FastAPI
-        const data = await aiClient.askQuestion(question);
+        // Forward question and user info to FastAPI
+        const data = await aiClient.askQuestion(question, req.user);
         
         // Return exactly what the AI returned, wrapped in our standard response
         res.json({ success: true, answer: data.answer });
