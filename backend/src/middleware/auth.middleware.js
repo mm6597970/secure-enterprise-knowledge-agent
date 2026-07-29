@@ -14,7 +14,7 @@ const verifyToken = async (req, res, next) => {
         
         // Fetch role from DB
         const [rows] = await pool.query(
-            `SELECT u.user_id, u.email, r.role_name 
+            `SELECT u.user_id, u.email, r.role_name            
              FROM users u 
              JOIN user_roles ur ON u.user_id = ur.user_id 
              JOIN roles r ON ur.role_id = r.role_id 

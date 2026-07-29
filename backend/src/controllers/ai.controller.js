@@ -3,16 +3,23 @@ const fs = require('fs');
 
 const chat = async (req, res) => {
     try {
-        const { question } = req.body;
+        const { question, history } = req.body;
         if (!question) {
             return res.status(400).json({ success: false, message: 'Question is required' });
         }
         
-        // Forward question and user info to FastAPI
-        const data = await aiClient.askQuestion(question, req.user);
+        // Forward question, history, and user info to FastAPI
+        const data = await aiClient.askQuestion(question, req.user, history || []);
         
-        // Return exactly what the AI returned, wrapped in our standard response
-        res.json({ success: true, answer: data.answer });
+        // Return AI response with Step 5 agent metadata
+        res.json({ 
+            success: true, 
+            answer: data.answer,
+            agent_chosen: data.agent_chosen,
+            sql_query: data.sql_query,
+            rag_docs: data.rag_docs,
+            status: data.status
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

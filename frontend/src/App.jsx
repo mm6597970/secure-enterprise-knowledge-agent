@@ -20,14 +20,21 @@ const MYSQL_ENDPOINTS = [
 ];
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [token, setToken] = useState(sessionStorage.getItem('token') || null);
   const [user, setUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('user')) || null;
+      return JSON.parse(sessionStorage.getItem('user')) || null;
     } catch {
       return null;
     }
   });
+
+  useEffect(() => {
+    // Ensure fresh project start opens on Login Page first
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }, []);
+
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'night');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +47,7 @@ function App() {
 
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState([
-    { role: 'ai', content: 'Hello! Ask me a question about the company or upload a document to the knowledge base.' }
+    { role: 'ai', content: 'Hello! Ask me a question about the company (e.g., About Nexora Systems, Founders & Leadership, or Company History).' }
   ]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -61,8 +68,8 @@ function App() {
       if (res.data.success) {
         setToken(res.data.token);
         setUser(res.data.user);
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+        sessionStorage.setItem('token', res.data.token);
+        sessionStorage.setItem('user', JSON.stringify(res.data.user));
       }
     } catch (err) {
       setLoginError(err.response?.data?.message || 'Login failed');
@@ -74,9 +81,9 @@ function App() {
   const handleLogout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setMessages([{ role: 'ai', content: 'Hello! Ask me a question about the company or upload a document to the knowledge base.' }]);
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    setMessages([{ role: 'ai', content: 'Hello! Ask me a question about the company (e.g., About Nexora Systems, Founders & Leadership, or Company History).' }]);
   };
 
   const getAuthHeaders = () => ({
@@ -106,13 +113,24 @@ function App() {
     if (!chatInput.trim()) return;
 
     const userMessage = chatInput.trim();
+    const historyPayload = messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setChatInput('');
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat`, { question: userMessage }, getAuthHeaders());
-      setMessages(prev => [...prev, { role: 'ai', content: response.data.answer || 'No answer received.' }]);
+      const response = await axios.post(`${API_BASE_URL}/chat`, { 
+        question: userMessage,
+        history: historyPayload
+      }, getAuthHeaders());
+      
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: response.data.answer || 'No answer received.',
+        agent_chosen: response.data.agent_chosen,
+        sql_query: response.data.sql_query,
+        status: response.data.status
+      }]);
     } catch (error) {
       console.error("Chat error:", error);
       if (error.response?.status === 401) handleLogout();
@@ -276,7 +294,41 @@ function App() {
           <div className="messages">
             {messages.map((msg, idx) => (
               <div key={idx} className={`message ${msg.role}`}>
+                {msg.role === 'ai' && msg.agent_chosen && (
+                  <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: msg.agent_chosen === 'SQL' ? '#10b981' :
+                                  msg.agent_chosen === 'HYBRID' ? '#f59e0b' :
+                                  msg.agent_chosen === 'BLOCKED' ? '#ef4444' : '#8b5cf6',
+                      color: '#fff'
+                    }}>
+                      ⚡ {msg.agent_chosen} Agent
+                    </span>
+                    {msg.status && msg.status !== 'Success' && (
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: 'rgba(255,255,255,0.15)'
+                      }}>
+                        {msg.status}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {msg.content}
+                {msg.role === 'ai' && msg.sql_query && (
+                  <details style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.85 }}>
+                    <summary style={{ cursor: 'pointer', color: '#6ee7b7' }}>🔍 SQL Query Executed</summary>
+                    <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '6px', borderRadius: '4px', overflowX: 'auto', marginTop: '4px' }}>
+                      {msg.sql_query}
+                    </pre>
+                  </details>
+                )}
               </div>
             ))}
             {loading && (
@@ -287,10 +339,37 @@ function App() {
             <div ref={messagesEndRef} />
           </div>
 
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', color: '#fff' }}
+              onClick={() => setChatInput('Tell me about Nexora Systems')}
+              disabled={loading}
+            >
+              🏢 About Nexora Systems
+            </button>
+            <button
+              type="button"
+              style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', color: '#fff' }}
+              onClick={() => setChatInput('Who are the Founders & Leadership?')}
+              disabled={loading}
+            >
+              👥 Founders & Leadership
+            </button>
+            <button
+              type="button"
+              style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', color: '#fff' }}
+              onClick={() => setChatInput('What is the Company History & Timeline?')}
+              disabled={loading}
+            >
+              📜 Company History & Timeline
+            </button>
+          </div>
+
           <form onSubmit={handleSendMessage} className="input-group">
             <input 
               type="text" 
-              placeholder="Ask a question (e.g., Show CEO salary)"
+              placeholder="Ask a question about the company (e.g., About Nexora Systems, Founders & Leadership...)"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               disabled={loading}

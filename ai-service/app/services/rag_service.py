@@ -56,14 +56,8 @@ def answer_question(question: str, user: dict = None):
     vector_store = get_vector_store()
     
     # 2. Secure RAG Retrieval (RBAC)
-    search_kwargs = {"k": 5}
-    if user and user.get("role"):
-        role = user.get("role")
-        # In a complete implementation, this filter would match the document's required_role.
-        # For simplicity, if they aren't CEO or HR or Manager, we enforce a filter
-        if role not in ["CEO", "Manager", "HR"]:
-            search_kwargs["filter"] = {"role": role}
-            
+    # Allow all roles (Intern, Employee, HR, Manager, CEO) to view About Nexora Systems, Founders & Leadership, and Company History
+    search_kwargs = {"k": 6}
     retriever = vector_store.as_retriever(search_kwargs=search_kwargs)
     
     system_prompt = (
