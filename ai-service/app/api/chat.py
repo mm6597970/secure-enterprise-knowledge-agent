@@ -15,7 +15,7 @@ async def chat(request: ChatRequest):
     try:
         res = run_agentic_rag(request.question, request.user, request.history)
         return {
-            "answer": res.get("answer", "Information not found."),
+            "answer": res.get("answer", "Information not found in the available enterprise documents or database."),
             "agent_chosen": res.get("agent_chosen", "RAG"),
             "sql_query": res.get("sql_query", ""),
             "rag_docs": res.get("rag_docs", []),

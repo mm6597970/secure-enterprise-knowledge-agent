@@ -61,6 +61,21 @@ def query_mysql(question: str, user: dict = None) -> dict:
     """
     role = user.get("role", "Intern") if user else "Intern"
 
+    # Security Guardrail (Rule 9): Prompt Injection / Malicious Inputs
+    lower_q = question.lower()
+    blocked_keywords = [
+        "ignore previous instructions", "reveal system prompt", "forget security",
+        "act as chatgpt", "bypass restrictions", "ignore instructions", "jailbreak",
+        "override", "bypass"
+    ]
+    if any(word in lower_q for word in blocked_keywords):
+        return {
+            "success": False,
+            "error": "Request denied due to security policy.",
+            "sql": "",
+            "data": None
+        }
+
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise ValueError("GROQ_API_KEY is not set.")
@@ -75,7 +90,8 @@ def query_mysql(question: str, user: dict = None) -> dict:
          "- Output ONLY the raw SQL SELECT query, without markdown formatting, code block backticks, or explanation.\n"
          "- Never write INSERT, UPDATE, DELETE, or ALTER queries.\n"
          "- For projects, check projects_current or projects_past.\n"
-         "- For leave policy, check leave_policy table.\n\n"
+         "- For leave policy, check leave_policy table.\n"
+         "- SQL is the authoritative source of truth for structured employee details, salary, department, join date, role, and IDs.\n\n"
          "Schema:\n{schema}"),
         ("human", "{question}")
     ])
@@ -98,13 +114,13 @@ def query_mysql(question: str, user: dict = None) -> dict:
             "data": None
         }
 
-    # 2. RBAC Guardrail: Salary access check
+    # 2. RBAC Guardrail: Salary access check (Rule 10)
     if role not in ["CEO", "HR", "Manager"]:
         sql_lower = raw_sql.lower()
         if "salary" in sql_lower or "salary_lpa" in sql_lower or "salary_structure" in sql_lower:
             return {
                 "success": False,
-                "error": f"Access Denied: Your role ({role}) is not authorized to view salary information.",
+                "error": "Access denied. You do not have permission to access this information.",
                 "sql": raw_sql,
                 "data": None
             }
